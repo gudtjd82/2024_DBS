@@ -67,3 +67,4 @@ def draw_tree(root=Node()):
         pointers.append(root.get_rightmost())
         for p in pointers:
             draw_tree(p)
+            print()
