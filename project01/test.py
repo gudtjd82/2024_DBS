@@ -1,7 +1,12 @@
 from utils import *
+# from bptree import *
 import re
 
-meta_data, nodes = parse_index_file("index.dat")
+meta_data, root, next_id = parse_index_file("index.dat")
+# degree = meta_data["b"]
+# print(degree)
 print(meta_data)
-for node in nodes:
-    node.print_info()
+print(root)
+print(next_id)
+# print()
+print_tree(root)

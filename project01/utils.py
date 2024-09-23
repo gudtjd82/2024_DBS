@@ -16,7 +16,10 @@ root=1
 def parse_index_file(index_file="index.dat"):
     # todo
     meta_data = {}
-    nodes = []
+    nodes = []          # 필요 없으면 삭제
+    root_node = None
+    nodes_dict = {}
+    next_id = 0
     parsing_meta = False
     parsing_nodes = False
 
@@ -57,6 +60,9 @@ def parse_index_file(index_file="index.dat"):
                 tokens = [token.strip() for token in tokens]
 
                 node_id = int(tokens[0])
+                if node_id >= next_id:
+                    next_id = node_id
+
                 is_leaf = bool(int(tokens[1]))
                 num_keys = int(tokens[2])
                 keys = eval(tokens[3])
@@ -73,9 +79,32 @@ def parse_index_file(index_file="index.dat"):
                 else:
                     rightmost = None
 
-                nodes.append(Node(is_leaf, node_id, num_keys, pairs, rightmost))
+                new_node = Node(is_leaf, node_id, num_keys, pairs, rightmost)
+                nodes.append(new_node)
+                nodes_dict[node_id] = new_node
+    
+    # convert pointer to node object
+    for node in nodes:
+        p_pairs = []
+
+        if not node.get_is_leaf():      # for non-leaf node
+            for k, p in node.get_pairs():
+                if isinstance(p, int):
+                    p_pairs.append((k, nodes_dict[p]))
+                else:
+                    p_pairs.append((k, p))
+            node.set_pairs(p_pairs)
+
+        org_rightmost = node.get_rightmost()
+        if isinstance(org_rightmost, int):
+            node.set_rightmost(nodes_dict[org_rightmost])       
+
+    root_id = meta_data["root"]
+    if len(nodes_dict) > 0:
+        root_node = nodes_dict[root_id]
+    next_id +=1
         
-    return meta_data, nodes
+    return meta_data, root_node, next_id
                 
 
                     
@@ -89,3 +118,8 @@ def parse_csv_file(data_file="data.csv"):
             pairs.append([int(e) for e in line])
         
     return pairs
+
+def save_nodes(index_file="index.dat", nodes=[Node()]):
+    print()
+    # todo
+    # 바뀐 부분만 저장
