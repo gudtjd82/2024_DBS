@@ -1,13 +1,15 @@
 class Node:
-    def __init__(self, is_leaf=False, node_id=0, num_keys=0, pairs=[], rightmost=None):
+    def __init__(self, degree=1, is_leaf=False, node_id=0, num_keys=0, pairs=[], rightmost=None, parent=None):
+        self.degree = degree
         self.is_leaf = is_leaf
-
         self.node_id = node_id
         self.num_keys = num_keys
         self.pairs = pairs
         self.rightmost = rightmost      # non-leaf: rightmost child // leaf: right sibling
+        self.parent = parent
     
     def __repr__(self):
+        # info = "{} ".format(self.parent.get_id())
         info = "{"
         info += "id: {}, ".format(self.node_id)
         info += "is_leaf: {}, ".format(self.is_leaf)
@@ -44,6 +46,30 @@ class Node:
         self.num_keys +=1
         return 0
     
+    def find_next_for_key(self, key):
+        next = None
+        for pair in self.pairs:
+            if key < pair[0]:
+                next = pair[1]
+                break
+        if next is None:
+            next = self.rightmost
+        return next
+    
+    def find_pair_pos(self, key):
+        pair_pos = -1
+        i = 0
+        for pair in self.pairs:
+            if key < pair[0]:
+                pair_pos = i
+            i +=1
+        if pair_pos < 0:
+            if i < self.degree:
+                pair_pos = i
+
+        return pair_pos
+    def get_degree(self):
+        return self.degree
     def get_is_leaf(self):
         return self.is_leaf
     def get_id(self):
@@ -54,31 +80,16 @@ class Node:
         return self.pairs
     def get_rightmost(self):
         return self.rightmost
-    
+    def get_parent(self):
+        return self.parent
+
     def set_leaf(self, bool):
         self.is_leaf = bool  
     def set_pairs(self, pairs):
         self.pairs = pairs
     def set_rightmost(self, rightmost):
         self.rightmost = rightmost
+    def set_parent(self, parent):
+        self.parent = parent
 
 
-def print_tree(node, level=0):
-    if node is None:
-        print()
-        return
-    indent = '  ' * level  
-    node_id = node.get_id()
-    keys = [key for key, _ in node.get_pairs()]
-    print(f"{indent}Node ID: {node_id}, Keys: {keys}")
-    
-    if not node.get_is_leaf():
-        for key, child_node in node.get_pairs():
-            if isinstance(child_node, Node):
-                print_tree(child_node, level + 1)
-
-        rightmost_child = node.get_rightmost()
-        if isinstance(rightmost_child, Node):
-            print_tree(rightmost_child, level + 1)
-    else:
-        pass

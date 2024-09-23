@@ -16,10 +16,13 @@ root=1
 def parse_index_file(index_file="index.dat"):
     # todo
     meta_data = {}
+    degree = 0
+
     nodes = []          # 필요 없으면 삭제
     root_node = None
-    nodes_dict = {}
+    nodes_dict = {}     # id로 node를 찾기 위한 dict
     next_id = 0
+
     parsing_meta = False
     parsing_nodes = False
 
@@ -62,7 +65,8 @@ def parse_index_file(index_file="index.dat"):
                 node_id = int(tokens[0])
                 if node_id >= next_id:
                     next_id = node_id
-
+                
+                degree = meta_data["b"]
                 is_leaf = bool(int(tokens[1]))
                 num_keys = int(tokens[2])
                 keys = eval(tokens[3])
@@ -79,7 +83,7 @@ def parse_index_file(index_file="index.dat"):
                 else:
                     rightmost = None
 
-                new_node = Node(is_leaf, node_id, num_keys, pairs, rightmost)
+                new_node = Node(degree, is_leaf, node_id, num_keys, pairs, rightmost)
                 nodes.append(new_node)
                 nodes_dict[node_id] = new_node
     
@@ -89,15 +93,25 @@ def parse_index_file(index_file="index.dat"):
 
         if not node.get_is_leaf():      # for non-leaf node
             for k, p in node.get_pairs():
+                pointer = None
                 if isinstance(p, int):
-                    p_pairs.append((k, nodes_dict[p]))
+                    pointer = nodes_dict[p]
+                    p_pairs.append((k, pointer))
                 else:
-                    p_pairs.append((k, p))
+                    pointer = p
+                    p_pairs.append((k, pointer))
+                # set parent
+                pointer.set_parent(node)
             node.set_pairs(p_pairs)
 
         org_rightmost = node.get_rightmost()
         if isinstance(org_rightmost, int):
-            node.set_rightmost(nodes_dict[org_rightmost])       
+            node.set_rightmost(nodes_dict[org_rightmost])
+            if not node.get_is_leaf():       
+                # set parent 
+                node.get_rightmost().set_parent(node)
+
+
 
     root_id = meta_data["root"]
     if len(nodes_dict) > 0:

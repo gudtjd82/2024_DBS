@@ -1,12 +1,10 @@
 from utils import *
-# from bptree import *
+from bptree import *
 import re
 
-meta_data, root, next_id = parse_index_file("index.dat")
-# degree = meta_data["b"]
-# print(degree)
-print(meta_data)
-print(root)
-print(next_id)
-# print()
+meta_data, root, next_id = parse_index_file("ex_index2.dat")
+# print(meta_data)
+# print(next_id)
 print_tree(root)
+
+insert(index_file="ex_index2.dat", input_file="input.csv")

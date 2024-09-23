@@ -1,1 +1,1 @@
-tokens[1]
+print_tree(root)
