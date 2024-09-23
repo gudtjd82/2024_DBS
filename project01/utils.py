@@ -19,6 +19,7 @@ def parse_index_file(index_file="index.dat"):
     nodes = []          # 필요 없으면 삭제
     root_node = None
     nodes_dict = {}
+    next_id = 0
     parsing_meta = False
     parsing_nodes = False
 
@@ -59,6 +60,9 @@ def parse_index_file(index_file="index.dat"):
                 tokens = [token.strip() for token in tokens]
 
                 node_id = int(tokens[0])
+                if node_id >= next_id:
+                    next_id = node_id
+
                 is_leaf = bool(int(tokens[1]))
                 num_keys = int(tokens[2])
                 keys = eval(tokens[3])
@@ -96,9 +100,11 @@ def parse_index_file(index_file="index.dat"):
             node.set_rightmost(nodes_dict[org_rightmost])       
 
     root_id = meta_data["root"]
-    root_node = nodes_dict[root_id]
+    if len(nodes_dict) > 0:
+        root_node = nodes_dict[root_id]
+    next_id +=1
         
-    return meta_data, root_node
+    return meta_data, root_node, next_id
                 
 
                     
