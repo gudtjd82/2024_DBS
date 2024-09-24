@@ -74,9 +74,9 @@ def parse_index_file(index_file="index.dat"):
                 pairs = []
                 for i in range(num_keys):
                     if len(pointers)-1 >= i:
-                        pairs.append((keys[i], pointers[i]))
+                        pairs.append([keys[i], pointers[i]])
                     else:
-                        pairs.append((keys[i], None))
+                        pairs.append([keys[i], None])
                 
                 if len(pointers) > num_keys:
                     rightmost = pointers[-1]
@@ -96,10 +96,10 @@ def parse_index_file(index_file="index.dat"):
                 pointer = None
                 if isinstance(p, int):
                     pointer = nodes_dict[p]
-                    p_pairs.append((k, pointer))
+                    p_pairs.append([k, pointer])
                 else:
                     pointer = p
-                    p_pairs.append((k, pointer))
+                    p_pairs.append([k, pointer])
                 # set parent
                 pointer.set_parent(node)
             node.set_pairs(p_pairs)
@@ -110,6 +110,8 @@ def parse_index_file(index_file="index.dat"):
             if not node.get_is_leaf():       
                 # set parent 
                 node.get_rightmost().set_parent(node)
+            else:
+                node.get_rightmost().set_left_sibling(node)
 
 
 

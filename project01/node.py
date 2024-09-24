@@ -1,5 +1,5 @@
 class Node:
-    def __init__(self, degree=1, is_leaf=False, node_id=0, num_keys=0, pairs=[], rightmost=None, parent=None):
+    def __init__(self, degree=1, is_leaf=False, node_id=0, num_keys=0, pairs=[], rightmost=None, parent=None, left_sibling=None):
         self.degree = degree
         self.is_leaf = is_leaf
         self.node_id = node_id
@@ -7,6 +7,7 @@ class Node:
         self.pairs = pairs
         self.rightmost = rightmost      # non-leaf: rightmost child // leaf: right sibling
         self.parent = parent
+        self.left_sibling = left_sibling
     
     def __repr__(self):
         # info = "{} ".format(self.parent.get_id())
@@ -64,10 +65,29 @@ class Node:
                 pair_pos = i
             i +=1
         if pair_pos < 0:
-            if i < self.degree:
+            if i <= self.degree:
                 pair_pos = i
 
         return pair_pos
+    
+    def change_child(self, old, new):
+        for pair in self.pairs:
+            if old in pair:
+                pair[1] = new
+                return 0
+        if self.rightmost == old:
+            self.rightmost = new
+            return 0
+        return -1
+    
+    def get_root(self):
+        temp = self
+        while True:
+            if temp.get_parent() is None:
+                break
+            temp = temp.get_parent()
+        return temp
+
     def get_degree(self):
         return self.degree
     def get_is_leaf(self):
@@ -82,6 +102,8 @@ class Node:
         return self.rightmost
     def get_parent(self):
         return self.parent
+    def get_left_sibling(self):
+        return self.left_sibling
 
     def set_leaf(self, bool):
         self.is_leaf = bool  
@@ -91,5 +113,7 @@ class Node:
         self.rightmost = rightmost
     def set_parent(self, parent):
         self.parent = parent
+    def set_left_sibling(self, ls):
+        self.left_sibling = ls
 
 
