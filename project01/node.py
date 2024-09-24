@@ -40,6 +40,7 @@ class Node:
     
     def add_pair(self, pair=(1, 100)):
         if self.is_duplicated_key(pair[0]):
+            print(f"Duplicated key: {pair}")
             return -1
 
         self.pairs.append(pair)
@@ -107,8 +108,11 @@ class Node:
 
     def set_leaf(self, bool):
         self.is_leaf = bool  
+        
     def set_pairs(self, pairs):
         self.pairs = pairs
+        self.num_keys = len(pairs)
+
     def set_rightmost(self, rightmost):
         self.rightmost = rightmost
     def set_parent(self, parent):

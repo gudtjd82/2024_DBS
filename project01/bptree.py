@@ -36,21 +36,22 @@ def split_and_insert(node=Node(), pair=(), next_id=0):
         left_pairs = node.get_pairs()[:left_num_keys]
         right_pairs = node.get_pairs()[left_num_keys:]
 
-        right_node = Node(degree, node.get_is_leaf(), node.get_id(), right_num_keys, right_pairs, node.get_rightmost(), node.get_parent())
+        node.set_pairs(right_pairs)
+        right_node = node
 
         left_node = Node(degree, node.get_is_leaf(), next_id, left_num_keys, left_pairs, right_node, node.get_parent())
         next_id +=1
 
         up_key = left_node.get_pairs()[-1][0]
         up_pair = [up_key, left_node]
-        parent = node.get_parent()
+        parent = right_node.get_parent()
         # root node가 아닐 때
         if parent is not None:
-            if parent.change_child(node, right_node) < 0:
-                print("ERROR: split and insert - change child")
-                return None, next_id
-            
-            root, next_id = split_and_insert(node.get_parent(), up_pair, next_id)
+            # if parent.change_child(node, right_node) < 0:
+            #     print("ERROR: split and insert - change child")
+            #     return None, next_id
+            left_node.set_parent(parent)
+            root, next_id = split_and_insert(parent, up_pair, next_id)
         # root node일 때
         else:
             root = Node(degree, False, next_id, 1, [up_pair], right_node)
@@ -63,7 +64,7 @@ def split_and_insert(node=Node(), pair=(), next_id=0):
         else:
             right_node.add_pair(pair)
 
-        # split할 node가 non-leaf node일 경우
+        # node가 non-leaf node일 경우
         if not node.get_is_leaf():
             # rightmost 정정
             left_node.set_rightmost(None)
@@ -72,22 +73,24 @@ def split_and_insert(node=Node(), pair=(), next_id=0):
                 pair[1].set_parent(left_node)
             for pair in right_node.get_pairs():
                 pair[1].set_parent(right_node)
+        # node가 leaf node일 경우
         else:
+            rn_ls= right_node.get_left_sibling()
             # rightmost 정정
-            ls= node.get_left_sibling()     # todo: 다른 접근 방법 필요. 참조 문제 발생
-            if ls is not None:
-                print(ls.get_id())
-                print(left_node.get_id())
-                left_node.set_left_sibling(ls)
-                ls.set_rightmost(left_node)
-                print(ls.get_rightmost().get_id())
+            left_node.set_rightmost(right_node)
+            if rn_ls is not None:
+                left_node.set_left_sibling(rn_ls)
+                rn_ls.set_rightmost(left_node)
             right_node.set_left_sibling(left_node)
-            
-            rmst =right_node.get_rightmost()
-            if rmst is not None:
-                rmst.set_left_sibling(right_node)
 
-            print(ls)
+            # if rn_ls is not None:
+            #     left_node.set_left_sibling(rn_ls)
+            #     rn_ls.set_rightmost(left_node)
+            # right_node.set_left_sibling(left_node)
+            
+            # rmst = right_node.get_rightmost()
+            # if rmst is not None:
+            #     rmst.set_left_sibling(right_node)
         
         return root, next_id
     # If node is not full
@@ -99,9 +102,6 @@ def insert(index_file="index.dat", input_file="input.csv"):
     meta_data, root, next_id = parse_index_file(index_file)
     input_pairs = parse_csv_file(input_file)
 
-    for input_pair in input_pairs:
-        print(input_pair)
-
     degree = meta_data["b"]
     root_id = meta_data["root"]
     for pair in input_pairs:
@@ -111,8 +111,7 @@ def insert(index_file="index.dat", input_file="input.csv"):
             root_id = next_id
             next_id +=1
             if new_node.add_pair(pair) < 0:
-                print("ERROR: Duplicated key")
-                return None
+                continue
             root = new_node
             continue
         
@@ -121,17 +120,19 @@ def insert(index_file="index.dat", input_file="input.csv"):
         if target_node is None:
             return target_node
         if target_node.get_num_keys() < degree:
-            target_node.add_pair(pair)
+            if target_node.add_pair(pair) < 0:
+                continue
+            root = target_node.get_root()
         else:
             root, next_id = split_and_insert(target_node, pair, next_id)
             if root is None:
                 break
-        
-        print(f"{pair} 삽입 완료")
-        print("==================================")
-        print_tree(root)
-        print("==================================")
 
+        # for debugging
+        # print(f"{pair[0]} 삽입 완료")
+        # print("==============================")
+        # print_tree(root)
+        # print("==============================")
     return root
 
 # Deletion
@@ -149,12 +150,13 @@ def search_range(index_file="index.dat", start_key=0, end_key=0):
     print("search keys in range")
     # todo7
 
+
 # print the B+ Tree structure
 def print_tree(node, level=0):
     if node is None:
         print()
         return
-    indent = '  ' * level  
+    indent = '     ' * level  
     node_id = node.get_id()
     keys = [key for key, _ in node.get_pairs()]
     if node.get_parent() is not None:
@@ -170,7 +172,7 @@ def print_tree(node, level=0):
                 ls_id = 0
             else:
                 ls_id = l_sibling.get_id()
-            print(f"{indent}{parent_id} | Node ID: {node_id}, Keys: {keys}, Right: {rmst}")
+            print(f"{indent}{parent_id} | Node ID: {node_id}, Keys: {keys}, Right: {rmst_id}")
             # print(f"{indent}{parent_id} | Node ID: {node_id}, Keys: {keys}, Left: {ls_id}, Right: {rmst_id}")
         else:
             print(f"{indent}{parent_id} | Node ID: {node_id}, Keys: {keys}")

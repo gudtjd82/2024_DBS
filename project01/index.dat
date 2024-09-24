@@ -1,6 +1,7 @@
 @ Meta info.
 b=3
 root=0
+num_index=0
 
 @ Node info.
 # Node ID, Type (0: non-leaf, 1: leaf), Key Count, [Keys], [Child Node Pointers or Values]

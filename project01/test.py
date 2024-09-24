@@ -7,7 +7,7 @@ meta_data, root, next_id = parse_index_file("index.dat")
 # print(next_id)
 print_tree(root)
 
-root = insert(index_file="index.dat", input_file="input.csv")
+root = insert(index_file="index.dat", input_file="input_test.csv")
 if root is None:
     print("Error: root is None")
     exit()
