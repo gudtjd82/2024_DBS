@@ -54,10 +54,18 @@ class Node:
         self.num_keys +=1
         return 0
     
+    def delete_pair(self, del_pair=(1, 100)):
+        for i, pair in enumerate(self.pairs):
+            if pair == del_pair:
+                del self.pairs[i]
+                self.num_keys -=1
+                return 0
+        return -1
+
     def find_next_for_key(self, key):
         next = None
         for pair in self.pairs:
-            if key < pair[0]:
+            if key <= pair[0]:
                 next = pair[1]
                 break
         if next is None:
@@ -67,7 +75,7 @@ class Node:
     def find_pair_pos(self, key):
         i = 0
         for pair in self.pairs:
-            if key < pair[0]:
+            if key <= pair[0]:
                 return i
             i +=1
         return i
@@ -82,6 +90,8 @@ class Node:
         for i, pair in enumerate(self.pairs):
             if child in pair:
                 return i
+        if self.rightmost == child:
+            return self.degree-1
         return -1
     
     def insert_child(self, idx, child):
@@ -93,6 +103,15 @@ class Node:
         else:
             self.rightmost = child
     
+    def delete_child(self, child):
+        for i, pair in enumerate(self.pairs):
+            if child in pair:
+                self.delete_pair(pair)
+                return 0
+        if self.rightmost == child:
+            self.rightmost = None
+            return 0
+        return -1
     # 안 쓰이면 삭제해도 됨
     def change_child(self, old, new):
         for pair in self.pairs:
@@ -148,6 +167,9 @@ class Node:
     def set_pairs(self, pairs):
         self.pairs = pairs
         self.num_keys = len(pairs)
+
+    def set_pairs_at(self, idx, pair):
+        self.pairs[idx] = pair
 
     def set_rightmost(self, rightmost):
         self.rightmost = rightmost

@@ -108,7 +108,10 @@ def parse_index_file(index_file="index.dat"):
             for k, p in node.get_pairs():
                 pointer = None
                 if isinstance(p, int):
-                    pointer = nodes_dict[p]
+                    if p > 0:
+                        pointer = nodes_dict[p]
+                    else:
+                        pointer = None
                     p_pairs.append([k, pointer])
                 else:
                     pointer = p
@@ -196,7 +199,10 @@ def save_nodes_to_index_file(index_file="index.dat", root=Node(), degree=0):
             if not node.get_is_leaf():
                 for k, v in node.get_pairs():
                     keys.append(k)
-                    values.append(v.get_id())
+                    if v:
+                        values.append(v.get_id())
+                    else:
+                        values.append(0)
             else:
                 for k, v in node.get_pairs():
                     keys.append(k)

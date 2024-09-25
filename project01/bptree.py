@@ -33,29 +33,25 @@ def split(node=Node(), next_id=0):
         left_pairs = node.get_pairs()[:min_num_keys]
         right_pairs = node.get_pairs()[min_num_keys:]
         
-        left_node = node
-        left_node.set_pairs(left_pairs)
+        right_node = node
+        right_node.set_pairs(right_pairs)
         
 
-        right_node = Node(degree, node.get_is_leaf(), next_id, len(right_pairs), right_pairs, left_node.get_rightmost(), left_node.get_parent())
+        left_node = Node(degree, node.get_is_leaf(), next_id, len(left_pairs), left_pairs, right_node, right_node.get_parent())
         next_id +=1
         
-        if not node.get_is_leaf():
-            # right node의 leftmost를 left node의 rightmost로 이동
-            leftmost_of_right_node = right_pairs[0][1]
-            right_pairs[0][1] = None
-            right_node.set_pairs(right_pairs)
-            left_node.set_rightmost(leftmost_of_right_node)
+        # if not node.get_is_leaf():
+        #     # right node의 leftmost를 left node의 rightmost로 이동
+        #     leftmost_of_right_node = right_pairs[0][1]
+        #     right_pairs[0][1] = None
+        #     right_node.set_pairs(right_pairs)
+        #     left_node.set_rightmost(leftmost_of_right_node)
 
-        up_key = right_node.get_pairs()[0][0]
+        up_key = left_node.get_pairs()[-1][0]
         up_pair = [up_key, left_node]
-        parent = left_node.get_parent() # type: Node
+        parent = right_node.get_parent() # type: Node
         # root node가 아닐 때
         if parent is not None:
-            right_node.set_parent(parent)
-            idx_of_left = parent.find_child_idx(left_node)
-            parent.insert_child(idx_of_left, right_node)
-
             parent.add_pair(up_pair)
             if parent.get_num_keys() > degree-1:
                 root, next_id = split(parent, next_id)
@@ -74,23 +70,23 @@ def split(node=Node(), next_id=0):
         # node가 non-leaf node일 경우
         if not node.get_is_leaf():
             # rightmost 정정
-            left_node.set_rightmost(None)   # todo: rightnode를 어디에 할당할지
+            left_node.set_rightmost(None)   # todo: left_node의 rightmost는 항상 None
             # 자식 노드의 parent 변경
             for pair in left_node.get_pairs():
                 pair[1].set_parent(left_node)
             for pair in right_node.get_pairs():
-                if pair[1] is not None:
-                    pair[1].set_parent(right_node)
+                pair[1].set_parent(right_node)
+            if right_node.get_rightmost() is not None:
+                right_node.get_rightmost().set_parent(right_node)
         # node가 leaf node일 경우
         else:
             # rightmost 정정
-            right_node.set_left_sibling(left_node)
-            right_node.set_rightmost(left_node.get_rightmost())
+            left_node.set_left_sibling(right_node.get_left_sibling())
             left_node.set_rightmost(right_node)
-            rn_rmst= right_node.get_rightmost()
-            if rn_rmst is not None:
-                rn_rmst.set_left_sibling(right_node)
-        
+            ln_ls= left_node.get_left_sibling() # type: Node
+            if ln_ls is not None:
+                ln_ls.set_rightmost(left_node)
+            right_node.set_left_sibling(left_node)
         return root, next_id
     
     # If node is not full
@@ -116,8 +112,6 @@ def insert(index_file="index.dat", input_file="input.csv"):
         
         # tree에 node가 존재할 때
         target_node, pair_pos = find_postion_to_insert(root, pair[0])
-        if target_node is None:
-            return target_node
         # 새로운 node 필요
         if target_node is not None and pair_pos < 0:
             num_children = target_node.get_num_children()
@@ -146,22 +140,168 @@ def insert(index_file="index.dat", input_file="input.csv"):
             break
 
         # for debugging
-        print(f"{pair[0]} 삽입 완료")
-        print("==============================")
-        print_tree(root)
-        print("==============================")
+        # print(f"{pair[0]} 삽입 완료")
+        # print("==============================")
+        # print_tree(root)
+        # print("==============================")
     
     save_nodes_to_index_file(index_file, root, degree)
     # save_nodes_to_index_file(index_file="index_test.dat", root=root, degree=degree)
     return root
 
 # Deletion
-def delete(index_file="index.dat", data_file="delete.csv"):
-    print("deletion")
-    # todo
+def take_or_merge(node=Node(), next_id=0):
+    root = node.get_root()
+    degree = node.get_degree()
+    min_num_keys = math.ceil((degree-1) / 2)
+    
+    # node가 부족한 경우
+    if node.get_num_keys() < min_num_keys:
+        # left sibling에서 빌려오기
+        left = node.get_left_sibling() # type: Node
+        right = node.get_rightmost() # type: Node
+
+        if left and left.get_num_keys() > min_num_keys:
+            # left의 가장 큰 pair를 가져오고 parent 수정
+            left_pair = left.get_pairs()[-1]
+            left.delete_pair(left_pair)
+            node.add_pair(left_pair)
+
+            # parent = node.get_parent()  # type: Node
+            # idx = parent.find_child_idx(left)
+            # n_k = left.get_pairs()[-1][0]
+            # parent.set_pairs_at(idx, (n_k, left))
+
+            return node.get_root(), next_id
+
+        elif right and right.get_num_keys() > min_num_keys:
+            # right의 가장 작은 pair를 가져오고 parent 수정
+            right_pair = right.get_pairs()[0]
+            right.delete_pair(right_pair)
+            node.add_pair(right_pair)
+
+            parent = node.get_parent()  # type: Node
+            idx = parent.find_child_idx(node)
+            n_k = node.get_pairs()[-1][0]
+            parent.set_pairs_at(idx, (n_k, node))
+
+            return node.get_root(), next_id
+        
+        elif left and left.get_num_keys() + node.get_num_keys() <= degree-1:
+            parent = node.get_parent()  # type: Node
+            if node.get_is_leaf():
+                # node에 left를 병합 후 parent 수정
+                for left_pair in left.get_pairs():
+                    node.add_pair(left_pair)
+                    if node.get_num_keys() > degree-1:
+                        return node.get_root(), next_id
+                
+                # leaf node 간의 pointer 수정 
+                l_ls = left.get_left_sibling()  # type: Node
+                node.set_left_sibling(l_ls)
+                if l_ls:
+                    l_ls.set_rightmost(node)
+                
+                # parent에서 pair 삭제
+                parent.delete_child(left)
+
+                return take_or_merge(parent, next_id)
+            else:
+                new_key = node.get_pairs()[0][0]
+                if not left.get_rightmost():
+                    new_pair = (new_key, left.get_rightmost())
+                    left.set_rightmost(None)
+                    node.add_pair(new_pair)
+                else:
+                    node.add_pair((new_key, None))
+
+                for pair in node.get_pairs():
+                    left.add_pair(pair)
+                if not node.get_rightmost():
+                    left.set_rightmost(node.get_rightmost())
+
+                parent.delete_child(node)
+
+                # idx = parent.find_child_idx(left)                
+                # parent.set_pairs_at(idx, (node.get_pairs()[-1][0], left))
+
+                if left.get_num_keys() > degree-1:
+                    return split(left, next_id)
+
+                return left.get_root(), next_id
+            # return take_or_merge(parent, next_id)
+        
+        elif right and right.get_num_keys() + node.get_num_keys() <= degree-1:
+            parent = node.get_parent()  # type: Node
+            if node.get_is_leaf():
+                # right에 node를 병합 후 parent 수정
+                for pair in node.get_pairs():
+                    right.add_pair(right_pair)
+                    if right.get_num_keys() > degree-1:
+                        return node.get_root(), next_id
+                
+                # leaf node 간의 pointer 수정 
+                n_ls = node.get_left_sibling()  # type: Node
+                right.set_left_sibling(n_ls)
+                if n_ls:
+                    n_ls.set_rightmost(right)
+                
+                # parent에서 pair 삭제
+                parent.delete_child(node)
+
+                return take_or_merge(parent, next_id)
+            else:
+                new_key = node.get_pairs()[-1][0]
+                if not node.get_rightmost():
+                    new_pair = (new_key, node.get_rightmost())
+                    node.set_rightmost(None)
+                    node.add_pair(new_pair)
+                else:
+                    node.add_pair((new_key, None))
+
+                for pair in node.get_pairs():
+                    right.add_pair(pair)
+
+                parent.delete_child(node)
+                
+                idx = parent.find_child_idx(right)                
+                # parent.set_pairs_at(idx-1, (node.get_pairs()[0][0], None))
+
+                if right.get_num_keys() > degree-1:
+                    return split(right, next_id)
+                
+                return right.get_root(), next_id
+            # return take_or_merge(parent, next_id)
+    else:
+        return node.get_root(), next_id
+
+def delete(index_file="index.dat", delete_file="delete.csv"):
+    meta_data, root, next_id = parse_index_file(index_file)
+
+    delete_keys = [int(k[0]) for k in parse_csv_file(delete_file)]
+    degree = meta_data["degree"]
+
+    for del_k in delete_keys:
+        target_node, target_pair, _ = find_key_from_root(root, del_k)
+
+        if target_node is None:
+            print("ERROR: deletion - NOT FOUND")
+            continue
+        
+        if target_node.delete_pair(target_pair) < 0:
+            print("ERROR: deletion - delete pair")
+            return None
+        root, next_id = take_or_merge(target_node, next_id)
+
+        while root.get_num_children() == 1:
+            root = root.get_pairs()[0][1]
+            root.set_parent(None)
+    return root
 
 # Single Key Search
 def find_key_from_root(node=Node(), key=0, path_nodes=[]):
+    if not node:
+        return None, None, None
     if not node.get_is_leaf():
         next_node = node.find_next_for_key(key)
         path_nodes.append(next_node)
