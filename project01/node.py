@@ -9,6 +9,12 @@ class Node:
         self.parent = parent
         self.left_sibling = left_sibling
     
+    def __hash__(self):
+        return hash(self.node_id)
+
+    def __eq__(self, other):
+        return isinstance(other, Node) and self.node_id == other.get_id()
+
     def __repr__(self):
         # info = "{} ".format(self.parent.get_id())
         info = "{"
@@ -57,20 +63,37 @@ class Node:
         if next is None:
             next = self.rightmost
         return next
-    
+
     def find_pair_pos(self, key):
-        pair_pos = -1
         i = 0
         for pair in self.pairs:
             if key < pair[0]:
-                pair_pos = i
+                return i
             i +=1
-        if pair_pos < 0:
-            if i <= self.degree:
-                pair_pos = i
+        return i
 
-        return pair_pos
+    def find_key(self, key):
+        for pair in self.pairs:
+            if key == pair[0]:
+                return pair
+        return None
+
+    def find_child_idx(self, child):
+        for i, pair in enumerate(self.pairs):
+            if child in pair:
+                return i
+        return -1
     
+    def insert_child(self, idx, child):
+        if idx < 0:
+            return -1
+        # pair에 insert
+        elif idx < self.num_keys-1:
+            self.pairs[idx][1] = child
+        else:
+            self.rightmost = child
+    
+    # 안 쓰이면 삭제해도 됨
     def change_child(self, old, new):
         for pair in self.pairs:
             if old in pair:
@@ -80,6 +103,13 @@ class Node:
             self.rightmost = new
             return 0
         return -1
+
+    def print_all_keys(self):
+        keys_str = ""
+        for pair in self.pairs:
+            keys_str += f"{pair[0]}, "
+
+        print(keys_str[:-2])
     
     def get_root(self):
         temp = self
@@ -89,6 +119,12 @@ class Node:
             temp = temp.get_parent()
         return temp
 
+    def get_num_children(self):
+        if self.rightmost is not None:
+            return self.num_keys + 1
+        else:
+            return self.num_keys
+        
     def get_degree(self):
         return self.degree
     def get_is_leaf(self):
@@ -108,7 +144,7 @@ class Node:
 
     def set_leaf(self, bool):
         self.is_leaf = bool  
-        
+
     def set_pairs(self, pairs):
         self.pairs = pairs
         self.num_keys = len(pairs)

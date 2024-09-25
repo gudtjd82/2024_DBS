@@ -1,6 +1,8 @@
 import csv
 import re
+from collections import deque
 from node import *
+# from bptree import *
 '''
 @ Meta info.
 b=4
@@ -13,6 +15,17 @@ root=1
 3, 1, 2, [12, 18], [200, 250]
 4, 1, 1, [25], [300]
 '''
+
+def new_index_file(index_file="index.dat", degree=5):
+    with open(index_file, 'w', encoding='utf-8') as file:
+        file.write("@ Meta info.\n")
+        file.write("degree={}\n".format(degree))
+        file.write("root=0\n")
+        file.write(f'nodes_num=0\n')
+        file.write("\n")
+        file.write("@ Node info.\n")
+        file.write("# Node ID, Type (0: non-leaf, 1: leaf), Key Count, [Keys], [Child Node Pointers or Values]\n")
+
 def parse_index_file(index_file="index.dat"):
     # todo
     meta_data = {}
@@ -66,7 +79,7 @@ def parse_index_file(index_file="index.dat"):
                 if node_id >= next_id:
                     next_id = node_id
                 
-                degree = meta_data["b"]
+                degree = meta_data["degree"]
                 is_leaf = bool(int(tokens[1]))
                 num_keys = int(tokens[2])
                 keys = eval(tokens[3])
@@ -135,7 +148,81 @@ def parse_csv_file(data_file="data.csv"):
         
     return pairs
 
-def save_nodes(index_file="index.dat", nodes=[Node()]):
-    print()
-    # todo
-    # 바뀐 부분만 저장
+def save_nodes_to_index_file(index_file="index.dat", root=Node(), degree=0):
+    if root is None:
+        new_index_file(index_file, degree) # type: ignore
+        return
+    
+    node_queue = deque()
+    nodes = set()
+    node_data_str = []
+
+    add_str = False
+
+    node_queue.append(root)
+
+    while node_queue:
+        node = node_queue.popleft() # type: Node
+        if node not in nodes:
+            nodes.add(node)
+            add_str = True
+        
+        # non-leaf node 추가
+        if not node.get_is_leaf():
+            for k, child in node.get_pairs():
+                if child is not None:
+                    if child not in nodes:
+                        node_queue.append(child)
+
+            child = node.get_rightmost()
+            if child is not None:
+                if child not in nodes:
+                    node_queue.append(child)
+        # leaf node 추가
+        else:
+            right_sibling = node.get_rightmost()
+            if right_sibling is not None:
+                if right_sibling not in nodes:
+                    node_queue.append(right_sibling)
+        
+        # append the node data string
+        if add_str:
+            node_id = node.get_id()
+            node_type = 1 if node.get_is_leaf() else 0
+            num_keys = node.get_num_keys()
+
+            keys = []
+            values = []
+            if not node.get_is_leaf():
+                for k, v in node.get_pairs():
+                    keys.append(k)
+                    values.append(v.get_id())
+            else:
+                for k, v in node.get_pairs():
+                    keys.append(k)
+                    values.append(v)
+            rightmost = node.get_rightmost()
+            if rightmost is not None:
+                values.append(rightmost.get_id())
+
+            keys_str = str(keys)
+            values_str = str(values)
+
+            line = f"{node_id}, {node_type}, {num_keys}, {keys_str}, {values_str}\n"
+            node_data_str.append(line)
+            add_str = False
+
+    # print(f"Total Node Nums: {len(nodes)}\n")
+    # index file에 meta data와 node data 작성
+    with open(index_file, 'w', encoding="utf-8") as f:
+        f.write('@ Meta info.\n')
+        f.write(f'degree={degree}\n')
+        f.write(f'root={root.get_id()}\n')
+        f.write(f'nodes_num={len(nodes)}\n')
+        f.write('\n')
+        f.write('@ Node info.\n')
+        f.write('# Node ID, Type (0: non-leaf, 1: leaf), Key Count, [Keys], [Child Node Pointers or Values]\n')
+
+        for line in node_data_str:
+            f.write(line)
+                

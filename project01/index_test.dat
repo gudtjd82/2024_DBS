@@ -1,7 +1,7 @@
 @ Meta info.
-degree=3
+degree=4
 root=0
-num_index=0
+nodes_num=0
 
 @ Node info.
 # Node ID, Type (0: non-leaf, 1: leaf), Key Count, [Keys], [Child Node Pointers or Values]
