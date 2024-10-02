@@ -62,7 +62,7 @@ def split(node=Node(), next_id=0):
         # node가 non-leaf node일 경우
         if not node.get_is_leaf():
             # rightmost 정정
-            left_node.set_rightmost(None)   # todo: left_node의 rightmost는 항상 None
+            left_node.set_rightmost(None)   
             # 자식 노드의 parent 변경
             for pair in left_node.get_pairs():
                 pair[1].set_parent(left_node)
