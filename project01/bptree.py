@@ -521,7 +521,7 @@ def delete_keys(keys=[], root=Node(), next_id=0, debug=False):
 
     return root, next_id
 
-def deletetion(index_file="index.dat", delete_file="delete.csv", debug=False):
+def deletion(index_file="index.dat", delete_file="delete.csv", debug=False):
     meta_data, root, next_id = parse_index_file(index_file)
 
     del_keys = [int(k[0]) for k in parse_csv_file(delete_file)]
@@ -599,16 +599,13 @@ def search_range(index_file="index.dat", start_key=0, end_key=0):
         next_node = next_node.get_rightmost()
 
 # B+ Tree인지 확인
-def check_and_fix_node(node=Node(), next_id=0, num_keys_range=(), key_range=(), children_range=(), level=0, leaf_levels=[], fix=False, debug=False):
+def check_and_fix_node(node=Node(), next_id=0, num_keys_range=(), children_range=(), level=0, leaf_levels=[], fix=False, debug=False):
     if not node:
         if not fix:
             return True
         else:
             return True, None, next_id, node
     
-    if not key_range:
-        key_range = (float('-inf'), float('inf'))
-
     is_safe = True
     root = node.get_root()
     prob_node = node
@@ -637,17 +634,6 @@ def check_and_fix_node(node=Node(), next_id=0, num_keys_range=(), key_range=(), 
                 if not is_safe:
                     return is_safe, root, next_id, prob_node
                 # return False, root, next_id, prob_node
-    
-    # node의 key range 확인
-    if node != root:
-        for k, _ in node.get_pairs():
-            if k <= key_range[0] or k > key_range[1]:
-                print(f"Node key {k} of Node {node.get_id()} is out of valid range ({key_range[0]}, {key_range[1]})")
-                if not fix:
-                    return False
-                else:
-                    return False, root, next_id, prob_node
-
     
     # node의 key 수(= value 수) 확인
     if node != root:
@@ -705,50 +691,29 @@ def check_and_fix_node(node=Node(), next_id=0, num_keys_range=(), key_range=(), 
     
     return True, root, next_id, prob_node
 
-def check_all_nodes(node=Node(), next_id=0, num_keys_range=(), key_range=(), children_range=(), level=0, leaf_levels=[], fix=False, debug=False):
+def check_all_nodes(node=Node(), next_id=0, num_keys_range=(), children_range=(), level=0, leaf_levels=[], fix=False, debug=False):
     
-    if not key_range:
-        key_range = (float('-inf'), float('inf'))
-
     if not fix:
-        is_safe =  check_and_fix_node(node=node, next_id=next_id, num_keys_range=num_keys_range, key_range=key_range, children_range=children_range, level=level, leaf_levels=leaf_levels, fix=fix, debug=debug)
+        is_safe =  check_and_fix_node(node=node, next_id=next_id, num_keys_range=num_keys_range, children_range=children_range, level=level, leaf_levels=leaf_levels, fix=fix, debug=debug)
         if not is_safe:
             return is_safe
     else:
-        is_safe, root, next_id, prob_node = check_and_fix_node(node=node, next_id=next_id, num_keys_range=num_keys_range, key_range=key_range, children_range=children_range, level=level, leaf_levels=leaf_levels, fix=fix, debug=debug)
+        is_safe, root, next_id, prob_node = check_and_fix_node(node=node, next_id=next_id, num_keys_range=num_keys_range, children_range=children_range, level=level, leaf_levels=leaf_levels, fix=fix, debug=debug)
 
         if not is_safe:
             return is_safe, root, next_id, prob_node
 
     # children에 대해 순회하며 check
     if is_safe and not node.get_is_leaf():
-        # child_key_range 설정
-        # 부모 노드의 키 목록 추출
-        parent_keys = [k for k, _ in node.get_pairs()]
-        num_children = node.get_num_children()
-        # 모든 자식 노드 가져오기
-        children = [node.get_child_at(i) for i in range(num_children)]
-
-        for i, child in enumerate(children):
+        for k, child in node.get_pairs():
             if not child:
                 continue
             
-            # 자식 노드의 key_range 계산
-            if i == 0:
-                # 첫 번째 자식 노드
-                child_key_range = (key_range[0], parent_keys[0])
-            elif i < len(parent_keys):
-                # 중간 자식 노드들
-                child_key_range = (parent_keys[i - 1], parent_keys[i])
-            else:
-                # 마지막 자식 노드 (rightmost)
-                child_key_range = (parent_keys[-1], key_range[1])
-
             if not fix:
-                if not check_all_nodes(node=child, num_keys_range=num_keys_range, key_range=child_key_range, children_range=children_range, level=level + 1, leaf_levels=leaf_levels, fix=fix):
+                if not check_all_nodes(node=child, num_keys_range=num_keys_range, children_range=children_range, level=level + 1, leaf_levels=leaf_levels, fix=fix):
                     return False
             else:
-                is_safe, root, next_id, prob_node = check_all_nodes(node=child, num_keys_range=num_keys_range, key_range=child_key_range, children_range=children_range, level=level+1, leaf_levels=leaf_levels, next_id=next_id, fix=fix, debug=debug)
+                is_safe, root, next_id, prob_node = check_all_nodes(node=child, num_keys_range=num_keys_range, children_range=children_range, level=level+1, leaf_levels=leaf_levels, next_id=next_id, fix=fix, debug=debug)
                 if not is_safe:
                     return is_safe, root, next_id, prob_node
                 if not root:
@@ -772,7 +737,8 @@ def fix_all_probs(node=Node(), next_id=0):
     is_safe = False
     # while not is_safe:
         # node에 return_node를 넣어 이어서 순회
-    is_safe, root, next_id, prob_node = check_all_nodes(node=node, next_id=next_id, num_keys_range=num_keys_range, children_range=children_range, level=0, leaf_levels=leaf_levels, fix=True)
+    for _ in range(3):
+        is_safe, root, next_id, prob_node = check_all_nodes(node=node, next_id=next_id, num_keys_range=num_keys_range, children_range=children_range, level=0, leaf_levels=leaf_levels, fix=True)
 
     return is_safe, root, next_id
 

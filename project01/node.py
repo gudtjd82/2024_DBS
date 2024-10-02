@@ -112,16 +112,6 @@ class Node:
             self.rightmost = None
             return 0
         return -1
-    # 안 쓰이면 삭제해도 됨
-    def change_child(self, old, new):
-        for pair in self.pairs:
-            if old in pair:
-                pair[1] = new
-                return 0
-        if self.rightmost == old:
-            self.rightmost = new
-            return 0
-        return -1
 
     def print_all_keys(self):
         keys_str = ""

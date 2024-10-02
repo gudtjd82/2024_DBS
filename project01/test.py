@@ -3,20 +3,22 @@ from bptree import *
 from generate_data_file import *
 import time
 
-generating = False
-inserting = False
+generating = True
+inserting = True
 deleting = True
+searching_single = False
+searching_range = False
 
 printing_tree = True
 insertion_debug = False
-deletion_debug = True
+deletion_debug = False
 check_bptree = True
 
 
 if generating:
     create_index_file(file_name="index_test.dat", degree=4)
 
-    input_num_pairs = 30
+    input_num_pairs = 50
     delete_num_pairs = 10
     key_range = (1, input_num_pairs*5)
     value_range = (1000, 10000000)
@@ -50,7 +52,7 @@ if check_bptree and inserting:
 
 if deleting:
     start_time = time.time()
-    root, next_id = deletetion(index_file="index_test.dat", delete_file="delete_test.csv",debug=deletion_debug)
+    root, next_id = deletion(index_file="index_test.dat", delete_file="delete_test.csv",debug=deletion_debug)
 
     if root is None:
         print("Error: Deletion - root is None")
@@ -60,15 +62,17 @@ if deleting:
         total_nodes_num = print_tree(root)
         print(f"Total nodes num: {total_nodes_num}")
     
-    if check_bptree:
-        print(is_bptree(root, root.get_degree()))
     
     end_time = time.time()
     execution_time = end_time - start_time
     print(f"deletion 수행 시간: {execution_time:.4f}초")
 
+if check_bptree:
+    print(is_bptree(root, root.get_degree()))
+
 # meta_data, root, next_id = parse_index_file(index_file="index_test.dat")
 
-
-# search_single(index_file="index_test.dat", key=71)
-# search_range(index_file="index_test.dat", start_key=8, end_key=35)
+if searching_single:
+    search_single(index_file="index_test.dat", key=103)
+if searching_range:
+    search_range(index_file="index_test.dat", start_key=8, end_key=35)
