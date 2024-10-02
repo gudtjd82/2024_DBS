@@ -40,13 +40,6 @@ def split(node=Node(), next_id=0):
         left_node = Node(degree, node.get_is_leaf(), next_id, len(left_pairs), left_pairs, right_node, right_node.get_parent())
         next_id +=1
         
-        # if not node.get_is_leaf():
-        #     # right node의 leftmost를 left node의 rightmost로 이동
-        #     leftmost_of_right_node = right_pairs[0][1]
-        #     right_pairs[0][1] = None
-        #     right_node.set_pairs(right_pairs)
-        #     left_node.set_rightmost(leftmost_of_right_node)
-
         up_key = left_node.get_pairs()[-1][0]
         up_pair = [up_key, left_node]
         parent = right_node.get_parent() # type: Node
@@ -57,8 +50,7 @@ def split(node=Node(), next_id=0):
                 root, next_id = split(parent, next_id)
             else:
                 root = parent.get_root()
-            # idx_of_left = parent.find_child_idx(left_node)
-            # parent.insert_child(idx_of_left+1, right_node)
+            
         # root node일 때
         else:
             root = Node(degree, False, next_id, 1, [up_pair], right_node)
@@ -93,13 +85,8 @@ def split(node=Node(), next_id=0):
     else:
         return node.get_root(), next_id
 
-def insert(index_file="index.dat", input_file="input.csv"):
-    meta_data, root, next_id = parse_index_file(index_file)
-    input_pairs = parse_csv_file(input_file)
-
-    degree = meta_data["degree"]
-    root_id = meta_data["root"]
-    for pair in tqdm(input_pairs, desc="Insertion", unit="pair"):
+def insert_pairs(pairs=[], root=Node(), degree=0, root_id=0, next_id=0, debug=False):
+    for pair in tqdm(pairs, desc="Inserting", unit="pair"):
         # tree가 비어있을 때
         if root_id == 0:
             new_node = Node(degree, True, next_id)
@@ -140,61 +127,196 @@ def insert(index_file="index.dat", input_file="input.csv"):
             break
 
         # for debugging
-        # print(f"{pair[0]} 삽입 완료")
-        # print("==============================")
-        # print_tree(root)
-        # print("==============================")
+        if debug:
+            print(f"{pair[0]} 삽입 완료")
+            print("==============================")
+            print_tree(root)
+            print(is_bptree(root, degree))
+            print("==============================")
     
+    
+    return root, next_id
+
+def insertion(index_file="index.dat", input_file="input.csv", debug=False):
+    meta_data, root, next_id = parse_index_file(index_file)
+    input_pairs = parse_csv_file(input_file)
+
+    degree = meta_data["degree"]
+    root_id = meta_data["root"]
+
+    root, next_id = insert_pairs(input_pairs, root, degree, root_id, next_id, debug)
+
+    print("Fixing some problems...")
+    root, next_id = fix_all_probs(root, next_id)
+
+    print("Saving nodes...")
     save_nodes_to_index_file(index_file, root, degree)
+    # print("Saving completed successfully!")
     # save_nodes_to_index_file(index_file="index_test.dat", root=root, degree=degree)
-    return root
+    print("Insertion completed successfully!")
+    return root, next_id
+    
 
 # Deletion
-def take_or_merge(node=Node(), next_id=0):
+def take_or_merge(node=Node(), next_id=0, debug=False):
+    if not node:
+        return None, next_id
+
     root = node.get_root()
     degree = node.get_degree()
     min_num_keys = math.ceil((degree-1) / 2)
     
     # node가 부족한 경우
     if node.get_num_keys() < min_num_keys:
-        # left sibling에서 빌려오기
         left = node.get_left_sibling() # type: Node
-        right = node.get_rightmost() # type: Node
+        right = node.get_right_sibling() # type: Node
 
+        parent = node.get_parent()  # type: Node
+        # left sibling에서 빌려오기
         if left and left.get_num_keys() > min_num_keys:
-            # left의 가장 큰 pair를 가져오고 parent 수정
+            if debug:
+                print("left sibling에서 빌려오기")
+
+            left_parent = left.get_parent() # type: Node
+
+            # left의 가장 큰 pair를 가져오기
             left_pair = left.get_pairs()[-1]
             left.delete_pair(left_pair)
             node.add_pair(left_pair)
 
-            # parent = node.get_parent()  # type: Node
-            # idx = parent.find_child_idx(left)
-            # n_k = left.get_pairs()[-1][0]
-            # parent.set_pairs_at(idx, (n_k, left))
+            # 이동한 pair의 set_parent
+            if not left.get_is_leaf():
+                left_pair[1].set_parent(node)
 
-            return node.get_root(), next_id
+            # parent key 수정 - left_parent2 == parent2가 될 때까지
+            left2 = left
+            node2 = node
+            left_parent2 = left_parent
+            parent2 = parent
+            if left_parent2:
+                idx = left_parent2.find_child_idx(left2)
+                # left가 rightmost가 아닌 경우
+                if idx < left_parent2.get_num_keys():
+                    while left2 != node2:
+                        if left_parent2:
+                            idx = left_parent2.find_child_idx(left2)
+                            n_k = left2.get_pairs()[-1][0]
+                            left_parent2.set_pairs_at(idx, [n_k, left2])
+                        else:
+                            break
 
+                        left2 = left_parent2
+                        node2 = parent2
+                        left_parent2 = left_parent2.get_parent()    # type: Node
+                        parent2 = parent2.get_parent()    # type: Node
+                # left가 rightmost인 경우 (left_parent는 rightmost가 아님)
+                else:
+                    n_k = left2.get_pairs()[-1][0]
+                    while left2 != node2:
+                        left2 = left_parent2
+                        node2 = parent2
+                        left_parent2 = left_parent2.get_parent()    # type: Node
+                        parent2 = parent2.get_parent()    # type: Node
+
+                        if left_parent2:
+                            idx = left_parent2.find_child_idx(left2)
+                            left_parent2.set_pairs_at(idx, [n_k, left2])
+                        else:
+                            break
+
+
+            # left node가 rightmost가 존재하는 non-leaf node일 경우
+            if not node.get_is_leaf() and left.get_rightmost():
+                # left의 rightmost에 있는 pair를 node의 두 번째 pair에 insert -> split
+                left_rightmost = left.get_rightmost()
+                left.set_rightmost(None)
+
+                insert_pos_node = node.get_pairs()[1][1]    # type: Node
+                for pair in left_rightmost.get_pairs():
+                    insert_pos_node.add_pair(pair)
+                root, next_id = split(insert_pos_node, next_id)
+
+            return root, next_id
+
+        # right sibling에서 빌려오기
         elif right and right.get_num_keys() > min_num_keys:
-            # right의 가장 작은 pair를 가져오고 parent 수정
+            if debug:
+                print("right sibling에서 빌려오기")
+
+            right_parent = right.get_parent() # type: Node
+
+            # right의 가장 작은 pair를 가져오기
             right_pair = right.get_pairs()[0]
             right.delete_pair(right_pair)
             node.add_pair(right_pair)
 
-            parent = node.get_parent()  # type: Node
-            idx = parent.find_child_idx(node)
-            n_k = node.get_pairs()[-1][0]
-            parent.set_pairs_at(idx, (n_k, node))
+            # 이동한 pair의 set_parent
+            
+            if not right.get_is_leaf():
+                right_pair[1].set_parent(node)
 
-            return node.get_root(), next_id
-        
-        elif left and left.get_num_keys() + node.get_num_keys() <= degree-1:
-            parent = node.get_parent()  # type: Node
+            # parent key 수정 - parent_2 == right_parent2가 될 때까지
+            right2 = right
+            node2 = node
+            right_parent2 = right_parent
+            parent2 = parent
+            if parent2:
+                idx = parent2.find_child_idx(node2)
+                # node가 rightmost가 아닌 경우
+                if idx < parent2.get_num_keys():
+                    while right2 != node2:
+                        if parent2:
+                            idx = parent2.find_child_idx(node2)
+                            n_k = node2.get_pairs()[-1][0]
+                            parent2.set_pairs_at(idx, [n_k, node2])
+                        else:
+                            break
+
+                        node2 = parent2
+                        right2 = right_parent2
+                        parent2 = parent2.get_parent()    # type: Node
+                        right_parent2 = right_parent2.get_parent()    # type: Node
+                # node가 rightmost인 경우
+                else:
+                    n_k = node2.get_pairs()[-1][0]
+                    while right2 != node2:
+                        node2 = parent2
+                        right2 = right_parent2
+                        parent2 = parent2.get_parent()  # type: Node
+                        right_parent2 = right_parent2.get_parent()  # type: Node
+
+                        if parent2:
+                            idx = parent2.find_child_idx(node2)
+                            parent2.set_pairs_at(idx, [n_k, node2])
+                        else:
+                            break
+
+            # node가 rightmost가 존재하는 non-leaf node일 경우
+            if not node.get_is_leaf() and node.get_rightmost():
+                # node의 rightmost에 있는 pair를 insert
+                rightmost = node.get_rightmost()
+                node.set_rightmost(None)
+
+                insert_pos_node = node.get_pairs()[-1][1]   # type: Node
+                for pair in rightmost.get_pairs():
+                    insert_pos_node.add_pair(pair)
+                root, next_id = split(insert_pos_node, next_id)
+
+            return root, next_id
+
+        # left sibling과 병합
+        elif left and left.get_num_keys() + node.get_num_keys() < degree:
+            if debug:
+                print("left sibling과 병합")
+
+            left_parent = left.get_parent() # type: Node
+
             if node.get_is_leaf():
                 # node에 left를 병합 후 parent 수정
                 for left_pair in left.get_pairs():
                     node.add_pair(left_pair)
                     if node.get_num_keys() > degree-1:
-                        return node.get_root(), next_id
+                        return None, next_id
                 
                 # leaf node 간의 pointer 수정 
                 l_ls = left.get_left_sibling()  # type: Node
@@ -203,42 +325,96 @@ def take_or_merge(node=Node(), next_id=0):
                     l_ls.set_rightmost(node)
                 
                 # parent에서 pair 삭제
-                parent.delete_child(left)
+                if left_parent:
+                    left_parent.delete_child(left)
 
-                return take_or_merge(parent, next_id)
+                # parent key 수정 - left_parent2 == parent2가 될 때까지
+                left2 = left_parent
+                node2 = parent
+                left_parent2 = left_parent.get_parent()
+                parent2 = parent.get_parent()
+                while left2 != node2:
+                    if left_parent2:
+                        idx = left_parent2.find_child_idx(left2)
+                        n_k = left2.get_pairs()[-1][0]
+                        left_parent2.set_pairs_at(idx, [n_k, left2])
+                    else:
+                        break
+
+                    left2 = left_parent2
+                    node2 = parent2
+                    left_parent2 = left_parent2.get_parent()    # type: Node
+                    parent2 = parent2.get_parent()    # type: Node
+
+                return take_or_merge(left_parent, next_id)
+            # non-leaf node일 경우
             else:
-                new_key = node.get_pairs()[0][0]
-                if not left.get_rightmost():
-                    new_pair = (new_key, left.get_rightmost())
-                    left.set_rightmost(None)
-                    node.add_pair(new_pair)
-                else:
-                    node.add_pair((new_key, None))
+                # 일단 node에 left를 병합 + set_parent -> left 삭제 -> parent key 수정 -> left node에 rightmost가 존재하면, left의 rightmost와 node의 leftmost 합치기 -> split 
+                insert_pos = left.get_num_keys()
+                node_rightmost = node.get_rightmost()
+                left_rightmost = left.get_rightmost()
 
-                for pair in node.get_pairs():
-                    left.add_pair(pair)
-                if not node.get_rightmost():
-                    left.set_rightmost(node.get_rightmost())
+                # node에 left를 병합
+                for pair in left.get_pairs():
+                    node.add_pair(pair)
+                    pair[1].set_parent(node)
+                # left.set_rightmost(node_rightmost)
+                # if left.get_rightmost():
+                #     left.get_rightmost().set_parent(left)
 
-                parent.delete_child(node)
+                # left 삭제
+                left_parent.delete_child(left)
 
-                # idx = parent.find_child_idx(left)                
-                # parent.set_pairs_at(idx, (node.get_pairs()[-1][0], left))
+                # parent key 수정
+                left2 = left_parent
+                node2 = parent
+                left_parent2 = left_parent.get_parent()
+                parent2 = parent.get_parent()
+                while left2 != node2:
+                    if left_parent2:
+                        idx = left_parent2.find_child_idx(left2)
+                        n_k = left2.get_pairs()[-1][0]
+                        left_parent2.set_pairs_at(idx, [n_k, left2])
+                    else:
+                        break
 
-                if left.get_num_keys() > degree-1:
-                    return split(left, next_id)
+                    left2 = left_parent2
+                    node2 = parent2
+                    left_parent2 = left_parent2.get_parent()    # type: Node
+                    parent2 = parent2.get_parent()    # type: Node
 
-                return left.get_root(), next_id
+                # idx = left_parent.find_child_idx(left)
+                # if node_rightmost:
+                #     new_key_of_parent = node_rightmost.get_pairs()[-1][0]
+                # else:
+                #     new_key_of_parent = left.get_pairs()[-1][0]
+                # left_parent.set_pairs_at(idx, [new_key_of_parent,left])
+
+                # left node에 rightmost가 존재하면
+                if left_rightmost:
+                    # left의 rightmost와 node의 leftmost 합치기
+                    insert_pos_node = node.get_pairs()[insert_pos][1]   # type: Node
+                    for pair in left_rightmost.get_pairs():
+                        insert_pos_node.add_pair(pair)
+                    # split
+                    root, next_id = split(insert_pos_node, next_id)
+
+                return root, next_id
             # return take_or_merge(parent, next_id)
         
-        elif right and right.get_num_keys() + node.get_num_keys() <= degree-1:
-            parent = node.get_parent()  # type: Node
+        # right sibling과 병합        
+        elif right and right.get_num_keys() + node.get_num_keys() < degree:
+            if debug:
+                print("right sibling과 병합")
+
+            right_parent = right.get_parent() # type: Node
+
             if node.get_is_leaf():
                 # right에 node를 병합 후 parent 수정
                 for pair in node.get_pairs():
-                    right.add_pair(right_pair)
+                    right.add_pair(pair)
                     if right.get_num_keys() > degree-1:
-                        return node.get_root(), next_id
+                        return None, next_id
                 
                 # leaf node 간의 pointer 수정 
                 n_ls = node.get_left_sibling()  # type: Node
@@ -247,56 +423,124 @@ def take_or_merge(node=Node(), next_id=0):
                     n_ls.set_rightmost(right)
                 
                 # parent에서 pair 삭제
-                parent.delete_child(node)
+                if parent:
+                    parent.delete_child(node)
+                
+                # parent key 수정 - right_parent2 == parent2가 될 때까지
+                node2 = parent
+                right2 = right_parent
+                parent2 = parent.get_parent()
+                right_parent2 = right_parent.get_parent()
+                while right2 != node2:
+                    if parent2:
+                        idx = parent2.find_child_idx(node2)
+                        n_k = node2.get_pairs()[-1][0]
+                        parent2.set_pairs_at(idx, [n_k, node2])
+                    else:
+                        break
+
+                    node2 = parent2
+                    right2 = right_parent2
+                    parent2 = parent2.get_parent()    # type: Node
+                    right_parent2 = right_parent2.get_parent()    # type: Node
 
                 return take_or_merge(parent, next_id)
+            # non-leaf node일 경우
             else:
-                new_key = node.get_pairs()[-1][0]
-                if not node.get_rightmost():
-                    new_pair = (new_key, node.get_rightmost())
-                    node.set_rightmost(None)
-                    node.add_pair(new_pair)
-                else:
-                    node.add_pair((new_key, None))
-
+                # 일단 right에 node를 병합 -> node 삭제 -> parent key 수정 -> node에 rightmost가 존재하면, node의 rightmost와 right의 leftmost 합치기 -> set_parent -> split 
+                insert_pos = node.get_num_keys()
+                node_rightmost = node.get_rightmost()
+                
+                # right에 node를 병합
                 for pair in node.get_pairs():
                     right.add_pair(pair)
+                    pair[1].set_parent(right)
 
+                # node 삭제
                 parent.delete_child(node)
+
+                # parent key 수정 - right_parent2 == parent2가 될 때까지
+                node2 = parent
+                right2 = right_parent
+                parent2 = parent.get_parent()
+                right_parent2 = right_parent.get_parent()
+                while right2 != node2:
+                    if parent2:
+                        idx = parent2.find_child_idx(node2)
+                        n_k = node2.get_pairs()[-1][0]
+                        parent2.set_pairs_at(idx, [n_k, node2])
+                    else:
+                        break
+
+                    node2 = parent2
+                    right2 = right_parent2
+                    parent2 = parent2.get_parent()    # type: Node
+                    right_parent2 = right_parent2.get_parent()    # type: Node
                 
-                idx = parent.find_child_idx(right)                
-                # parent.set_pairs_at(idx-1, (node.get_pairs()[0][0], None))
-
-                if right.get_num_keys() > degree-1:
-                    return split(right, next_id)
+                if node_rightmost:
+                    # node의 rightmost와 right의 leftmost 합치기
+                    insert_pos_node = right.get_pairs()[insert_pos][1]
+                    for pair in node_rightmost.get_pairs():
+                        insert_pos_node.add_pair(pair)
+                    # split
+                    root, next_id = split(insert_pos_node, next_id)
                 
-                return right.get_root(), next_id
-            # return take_or_merge(parent, next_id)
-    else:
-        return node.get_root(), next_id
+                return root, next_id
+    return root, next_id
 
-def delete(index_file="index.dat", delete_file="delete.csv"):
-    meta_data, root, next_id = parse_index_file(index_file)
-
-    delete_keys = [int(k[0]) for k in parse_csv_file(delete_file)]
-    degree = meta_data["degree"]
-
-    for del_k in delete_keys:
+def delete_keys(keys=[], root=Node(), next_id=0, debug=False):
+    for del_k in tqdm(keys, desc="Deleting", unit="key"):
         target_node, target_pair, _ = find_key_from_root(root, del_k)
 
         if target_node is None:
-            print("ERROR: deletion - NOT FOUND")
+            print(f"ERROR: deletion - CAN'T FIND {del_k}")
             continue
         
         if target_node.delete_pair(target_pair) < 0:
             print("ERROR: deletion - delete pair")
             return None
-        root, next_id = take_or_merge(target_node, next_id)
+
+        root, next_id = take_or_merge(target_node, next_id, debug)
 
         while root.get_num_children() == 1:
-            root = root.get_pairs()[0][1]
+            root = root.get_child_at(0)
             root.set_parent(None)
-    return root
+
+        # for debugging
+        if debug:
+            bptree_check = is_bptree(root, root.get_degree())
+            print(f"deletion completed: {del_k}")
+            print("==============================")
+            print_tree(root)
+            print(bptree_check)
+            print("==============================")
+
+        # if not bptree_check:
+        #     print("Deletion Error! - NOT B+ Tree")
+        #     return root, next_id
+
+        if not root:
+            print("Deletion Error! - fix all probs")
+            return root, next_id
+
+    return root, next_id
+
+def deletetion(index_file="index.dat", delete_file="delete.csv", debug=False):
+    meta_data, root, next_id = parse_index_file(index_file)
+
+    del_keys = [int(k[0]) for k in parse_csv_file(delete_file)]
+
+    root, next_id = delete_keys(del_keys, root, next_id, debug)
+
+    print("Fixing some problems...")
+    root, next_id = fix_all_probs(root, next_id)
+
+    print("Saving nodes...")
+    save_nodes_to_index_file(index_file, root, root.get_degree())
+
+    print("Deletion completed successfully!")
+    return root, next_id
+
 
 # Single Key Search
 def find_key_from_root(node=Node(), key=0, path_nodes=[]):
@@ -355,53 +599,157 @@ def search_range(index_file="index.dat", start_key=0, end_key=0):
         next_node = next_node.get_rightmost()
 
 # B+ Tree인지 확인
-def is_bptree(root, degree):
+def check_and_fix_node(node=Node(), next_id=0, num_keys_range=(), key_range=(), children_range=(), level=0, leaf_levels=[], fix=False, debug=False):
+    if not node:
+        if not fix:
+            return True
+        else:
+            return True, None, next_id
+    if not key_range:
+        key_range = (float('-inf'), float('inf'))
+
+    root = node.get_root()
+
+    # root와 leaf가 아닌 node의 children 수 확인
+    if node != root and not node.get_is_leaf():
+        if node.get_num_children() > children_range[1]:
+            if not fix:
+                print("root가 아닌 non-leaf node의 children 수 확인 -> FALSE")
+                return False
+            else:
+                root, next_id = split(node, next_id)
+                return False, root, next_id
+
+        elif node.get_num_children() < children_range[0]:
+            if not fix:
+                print("root가 아닌 non-leaf node의 children 수 확인 -> FALSE")
+                return False
+            else:
+                root, next_id = take_or_merge(node, next_id, debug)
+                return False, root, next_id
+    
+    # node의 key range 확인
+    for k, _ in node.get_pairs():
+        if k <= key_range[0] or k > key_range[1]:
+            print(f"Node key {k} is out of valid range ({key_range[0]}, {key_range[1]})")
+            if not fix:
+                return False
+            else:
+                return False, None, next_id
+
+    
+    # node의 key 수(= value 수) 확인
+    if node.get_num_keys() > num_keys_range[1]:
+        if not fix:
+            print("node의 value 수 확인 -> FALSE")
+            return False
+        else:
+            root, next_id = split(node, next_id)
+            return False, root, next_id
+    elif node.get_num_keys() < num_keys_range[0]:
+        if not fix:
+            print("node의 value 수 확인 -> FALSE")
+            return False
+        else:
+            root, next_id = take_or_merge(node, next_id, debug)
+            return False, root, next_id
+
+    if node.get_is_leaf():
+        # 첫 번째 leaf node의 level을 저장
+        if not leaf_levels:
+            leaf_levels.append(level)
+        # 모든 leaf node는 같은 level에 있어야 함
+        elif leaf_levels[0] != level:
+            print("leaf node의 level이 모두 같은지 확인 -> FALSE")
+            if not fix:
+                return False
+            else:
+                return False, None, next_id
+
+        # 오름차순 확인
+        if node.get_rightmost() and node.get_rightmost().get_is_leaf():
+            if node.get_pairs()[-1][0] > node.get_rightmost().get_pairs()[0][0]:
+                print("오름차순 정렬 확인 -> FALSE")
+                if not fix:
+                    return False
+                else:
+                    return False, None, next_id
+        if not fix:
+            return True
+        else:
+            return True, root, next_id
+
+    # children에 대해 순회하며 check
+    if not node.get_is_leaf():
+        # 부모 노드의 키 목록 추출
+        parent_keys = [k for k, _ in node.get_pairs()]
+        num_children = node.get_num_children()
+        # 모든 자식 노드 가져오기
+        children = [node.get_child_at(i) for i in range(num_children)]
+
+        for i, child in enumerate(children):
+            if not child:
+                continue
+            
+            # 자식 노드의 key_range 계산
+            if i == 0:
+                # 첫 번째 자식 노드
+                child_key_range = (key_range[0], parent_keys[0])
+            elif i < len(parent_keys):
+                # 중간 자식 노드들
+                child_key_range = (parent_keys[i - 1], parent_keys[i])
+            else:
+                # 마지막 자식 노드 (rightmost)
+                child_key_range = (parent_keys[-1], key_range[1])
+
+            if not fix:
+                if not check_and_fix_node(node=child, num_keys_range=num_keys_range, key_range=child_key_range, children_range=children_range, level=level + 1, leaf_levels=leaf_levels, fix=fix):
+                    return False
+            else:
+                check, root, next_id = check_and_fix_node(node=child, num_keys_range=num_keys_range, key_range=child_key_range, children_range=children_range, level=level+1, leaf_levels=leaf_levels, next_id=next_id, fix=fix, debug=debug)
+                if not root:
+                    print("check error!")
+                    return check, root, next_id
+                if not check:
+                    return check, root, next_id
+    if not fix:
+        return True
+    else:
+        return True, root, next_id
+
+# root를 인자로 받아 B+ tree의 문제점을 찾고 그것을 고치기를 반복
+def fix_all_probs(root=Node(), next_id=0):
+    degree = root.get_degree()
+    num_keys_range = ((degree-1)//2, degree-1)
+    children_range = (degree//2, degree)
+
+    leaf_levels = []
+
+    check = False
+    while not check:
+        check, root, next_id = check_and_fix_node(node=root, next_id=next_id, num_keys_range=num_keys_range, children_range=children_range, level=0, leaf_levels=leaf_levels, fix=True)
+
+        if not root:
+            return root, next_id
+    # if debug:
+    #     print("after fix all probs")
+    #     print("==============================")
+    #     print_tree(root)
+    #     print(is_bptree(root, root.get_degree()))
+    #     print("==============================")
+    return root, next_id
+
+def is_bptree(root, degree, next_id=0):
     if not root:
         return False 
-
-    def check_node(node=Node(), key_range=(), children_range=(), level=0, leaf_levels=[]):
-        # root와 leaf가 아닌 node의 children 수 확인
-        if node != root and not node.get_is_leaf():
-            if node.get_num_children() > children_range[1] or node.get_num_children() < children_range[0]:
-                print("root와 leaf가 아닌 node의 children 수 확인 -> FALSE")
-                return False
-        
-        # leaf node의 value 수 확인
-        if node.get_is_leaf():
-            if node.get_num_keys() > key_range[1] or node.get_num_keys() < key_range[0]:
-                print("leaf node의 value 수 확인 -> FALSE")
-                return False
-
-            # 첫 번째 leaf node의 level을 저장
-            if not leaf_levels:
-                leaf_levels.append(level)
-            # 모든 leaf node는 같은 level에 있어야 함
-            elif leaf_levels[0] != level:
-                print("leaf node의 level이 모두 같은지 확인 -> FALSE")
-                return False
-
-            # 오름차순 확인
-            if node.get_rightmost() and node.get_rightmost().get_is_leaf():
-                if node.get_pairs()[-1][0] > node.get_rightmost().get_pairs()[0][0]:
-                    print("오름차순 정렬 확인 -> FALSE")
-                    return False
-            return True
-
-
-        if not node.is_leaf:
-            for k, child in node.get_pairs():
-                if not check_node(child, key_range, children_range, level + 1, leaf_levels):
-                    return False
-
-        return True
 
     # 빈 리스트로 리프 노드의 레벨을 기록하여 같은 레벨에 있는지 확인
     leaf_levels = []
     
     # 루트는 예외적으로 최소 1개의 키를 가져야 함
-    key_range = ((degree-1)//2, degree-1)
+    num_keys_range = ((degree-1)//2, degree-1)
     children_range = (degree//2, degree)
-    return check_node(root, key_range, children_range, 0, leaf_levels)
+    return check_and_fix_node(node=root, num_keys_range=num_keys_range, children_range=children_range, level=0, leaf_levels=leaf_levels)
 
 # print the B+ Tree structure
 def print_tree(node, level=0, total_nodes_num=0):

@@ -1,6 +1,7 @@
 import csv
 import re
 from collections import deque
+from tqdm import tqdm
 from node import *
 # from bptree import *
 '''
@@ -25,6 +26,8 @@ def new_index_file(index_file="index.dat", degree=5):
         file.write("\n")
         file.write("@ Node info.\n")
         file.write("# Node ID, Type (0: non-leaf, 1: leaf), Key Count, [Keys], [Child Node Pointers or Values]\n")
+
+        file.flush()
 
 def parse_index_file(index_file="index.dat"):
     # todo
@@ -51,7 +54,7 @@ def parse_index_file(index_file="index.dat"):
     '''
     with open(index_file, 'r', encoding='utf-8') as dat_file:
         file_iter = iter(dat_file)
-        for line in file_iter:
+        for line in tqdm(file_iter, desc="Parsing index file", unit="line"):
             line = line.strip()
             if not line:
                 continue
@@ -163,7 +166,6 @@ def save_nodes_to_index_file(index_file="index.dat", root=Node(), degree=0):
     add_str = False
 
     node_queue.append(root)
-
     while node_queue:
         node = node_queue.popleft() # type: Node
         if node not in nodes:
@@ -231,4 +233,5 @@ def save_nodes_to_index_file(index_file="index.dat", root=Node(), degree=0):
 
         for line in node_data_str:
             f.write(line)
+        f.flush()
                 

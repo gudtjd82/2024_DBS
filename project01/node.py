@@ -91,7 +91,7 @@ class Node:
             if child in pair:
                 return i
         if self.rightmost == child:
-            return self.degree-1
+            return self.num_keys
         return -1
     
     def insert_child(self, idx, child):
@@ -143,6 +143,20 @@ class Node:
             return self.num_keys + 1
         else:
             return self.num_keys
+
+    def get_child_at(self, idx):
+        i = -1
+        for pair in self.pairs:
+            if pair:
+                i +=1
+            if idx == i:
+                return pair[1]
+        if self.rightmost:
+            i +=1
+            if idx == i:
+                return self.rightmost
+                
+        return None
         
     def get_degree(self):
         return self.degree
@@ -154,12 +168,32 @@ class Node:
         return self.num_keys
     def get_pairs(self):
         return self.pairs
-    def get_rightmost(self):
-        return self.rightmost
     def get_parent(self):
         return self.parent
+
+    def get_rightmost(self):
+        return self.rightmost
+
+    def get_right_sibling(self):
+        if self.is_leaf:
+            return self.rightmost
+        else:
+            if self.parent:
+                idx = self.parent.find_child_idx(self)
+                if idx+1 < self.parent.get_num_keys():
+                    return self.parent.get_pairs()[idx+1][1]
+                else:
+                    return self.parent.get_rightmost()
+
     def get_left_sibling(self):
-        return self.left_sibling
+        if self.is_leaf:
+            return self.left_sibling
+        else:
+            if self.parent:
+                idx = self.parent.find_child_idx(self)
+                if idx-1 >= 0:
+                    return self.parent.get_pairs()[idx-1][1]
+        return None
 
     def set_leaf(self, bool):
         self.is_leaf = bool  
