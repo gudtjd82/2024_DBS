@@ -9,16 +9,16 @@ deleting = True
 searching_single = False
 searching_range = False
 
-printing_tree = True
+printing_tree = False
 insertion_debug = False
 deletion_debug = False
 check_bptree = True
 
 
 if generating:
-    create_index_file(file_name="index_test.dat", degree=4)
+    create_index_file(file_name="index_test.dat", degree=5)
 
-    input_num_pairs = 50
+    input_num_pairs = 100
     delete_num_pairs = 10
     key_range = (1, input_num_pairs*5)
     value_range = (1000, 10000000)

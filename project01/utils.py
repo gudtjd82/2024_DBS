@@ -22,7 +22,8 @@ def new_index_file(index_file="index.dat", degree=5):
         file.write("@ Meta info.\n")
         file.write("degree={}\n".format(degree))
         file.write("root=0\n")
-        file.write(f'nodes_num=0\n')
+        file.write('nodes_num=0\n')
+        file.write('next_id=0\n')
         file.write("\n")
         file.write("@ Node info.\n")
         file.write("# Node ID, Type (0: non-leaf, 1: leaf), Key Count, [Keys], [Child Node Pointers or Values]\n")
@@ -78,6 +79,7 @@ def parse_index_file(index_file="index.dat"):
                 tokens = re.findall(pattern, line, re.VERBOSE)
                 tokens = [token.strip() for token in tokens]
 
+                next_id = meta_data["next_id"]
                 node_id = int(tokens[0])
                 if node_id >= next_id:
                     next_id = node_id
@@ -154,7 +156,7 @@ def parse_csv_file(data_file="data.csv"):
         
     return pairs
 
-def save_nodes_to_index_file(index_file="index.dat", root=Node(), degree=0):
+def save_nodes_to_index_file(index_file="index.dat", root=Node(), degree=0, next_id=0):
     if root is None:
         new_index_file(index_file, degree) # type: ignore
         return
@@ -227,6 +229,7 @@ def save_nodes_to_index_file(index_file="index.dat", root=Node(), degree=0):
         f.write(f'degree={degree}\n')
         f.write(f'root={root.get_id()}\n')
         f.write(f'nodes_num={len(nodes)}\n')
+        f.write(f'next_id={next_id}\n')
         f.write('\n')
         f.write('@ Node info.\n')
         f.write('# Node ID, Type (0: non-leaf, 1: leaf), Key Count, [Keys], [Child Node Pointers or Values]\n')

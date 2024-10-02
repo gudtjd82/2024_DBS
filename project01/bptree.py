@@ -153,7 +153,7 @@ def insertion(index_file="index.dat", input_file="input.csv", debug=False):
     # root, next_id = fix_all_probs(root, next_id)
 
     print("Saving nodes...")
-    save_nodes_to_index_file(index_file, root, degree)
+    save_nodes_to_index_file(index_file, root, degree, next_id)
     
     print("Insertion completed successfully!")
     return root, next_id
@@ -536,7 +536,7 @@ def deletion(index_file="index.dat", delete_file="delete.csv", debug=False):
         return root, next_id
 
     print("Saving nodes...")
-    save_nodes_to_index_file(index_file, root, root.get_degree())
+    save_nodes_to_index_file(index_file, root, root.get_degree(), next_id)
 
     print("Deletion completed successfully!")
     return root, next_id
