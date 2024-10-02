@@ -46,7 +46,7 @@ class Node:
     
     def add_pair(self, pair=(1, 100)):
         if self.is_duplicated_key(pair[0]):
-            print(f"Duplicated key: {pair}")
+            # print(f"Duplicated key: {pair}")
             return -1
 
         self.pairs.append(pair)
@@ -155,7 +155,7 @@ class Node:
             i +=1
             if idx == i:
                 return self.rightmost
-                
+
         return None
         
     def get_degree(self):
